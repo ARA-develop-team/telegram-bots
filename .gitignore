@@ -3,3 +3,5 @@
 .idea
 config.ini
 hack_telegram
+my_account.session
+my_account.session-journal
