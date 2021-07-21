@@ -58,7 +58,7 @@ def hack(_, msg):
 
     while (perc < 100):
         try:
-            text = "👽 Поиск секретных данных об НЛО ..." + str(perc) + "%"
+            text = "👽 Поиск секретных данных об  ..." + str(perc) + "%"
             msg.edit(text)
 
             perc += random.randint(1, 5)
