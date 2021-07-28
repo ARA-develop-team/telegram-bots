@@ -1,0 +1,9 @@
+ARA interception Telegram
+
+- create new file terminal_tg.py
+- paste "listen code" to it
+* exclude .listen | .motion and etc (rewrite .run)
+- make it possible to write message from terminal_tg.py
+- save all "interception" data to the yml file (create yml file)
+ 
+
