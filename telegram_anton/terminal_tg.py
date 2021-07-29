@@ -4,6 +4,7 @@ from pyrogram.errors import FloodWait, MessageNotModified
 
 import time
 from time import sleep
+import notify2
 import subprocess
 import gallery
 import threading
@@ -12,17 +13,32 @@ import sys
 import yaml
 
 
-def config_parser(session=None, get_data=False, first_time=None):   # working with session.yml
-    if get_data is True:        # output yaml
+def notification(text, title='terminal_tg'):
+    notify2.init('new message')
+    notice = notify2.Notification(title, text)
+    notice.show()
+
+
+def config_parser(session=None, get_data=False, inline=False, first_time=None):  # working with session.yml
+    if get_data is True:  # output yaml
         with open('session.yml', 'r') as file:
             data_yml = yaml.load(file, yaml.Loader)
 
             if not data_yml:
                 data_yml = "RECORDED SESSION ARE ABSENT"
 
-            print(data_yml)
+            if inline:
+                print(data_yml)
 
-    elif session:     # saving session
+            else:
+                for session in data_yml:
+                    print(session)
+                    data_yml_session = dict(data_yml[session])  # to remove the warning
+
+                    for key in data_yml_session.keys():
+                        print("    %s: %s" % (key, data_yml[session][key]))
+
+    elif session:  # saving session
         with open('session.yml', 'a') as file:
 
             end_time = time.strftime("%X", time.localtime())
@@ -40,23 +56,27 @@ def config_parser(session=None, get_data=False, first_time=None):   # working wi
 def send_message():
     active = threading.currentThread()
     while getattr(active, "do_run", True):
-        i, o, e = select.select([sys.stdin], [], [], 2)        # timeout input (for closing thread)
+        i, o, e = select.select([sys.stdin], [], [], 2)  # timeout input (for closing thread)
 
         if i:
             entering = sys.stdin.readline().strip()
 
-            if entering[0] == '^':       # requests
+            if entering[0] == '^':  # requests
 
                 if entering == '^get data':
                     config_parser(get_data=True)
 
-                else:
-                    print('info:\n^get data  -  to open session archive')
+                elif entering == '^get data line':
+                    config_parser(get_data=True, inline=True)
 
-            else:        # sending message
+                else:
+                    print('info:\n^get data  -  to open session archive\n'
+                          '^get data line -  to open session archive using only one line')
+
+            else:  # sending message
                 id_chat, message, id_indicator = '', '', True
 
-                for symbol in entering:       # split id and message
+                for symbol in entering:  # split id and message
                     if id_indicator is True:
                         if symbol == " ":
                             id_indicator = False
@@ -83,7 +103,7 @@ app = Client("my_account")
 sender = threading.Thread(target=send_message)
 sender.start()
 
-messages = []    # for saving session
+messages = []  # for saving session
 
 
 @app.on_message(filters.command("art", prefixes=".") & filters.all)
@@ -170,6 +190,8 @@ def interception(_, msg):
 
             messages.append(new_mess)
             print(">>>  %s  -  %s               (%s) %s" % (new_mess[0], new_mess[1], new_mess[2], new_mess[3]))
+
+        notification('%s, %s' % (new_mess[0], new_mess[2]))
 
     except AttributeError:
         pass
