@@ -11,12 +11,15 @@ import threading
 import select
 import sys
 import yaml
+import pathlib
 
 
 def notification(text, title='terminal_tg'):
     notify2.init('new message')
-    notice = notify2.Notification(title, text)
+    path = '%s/%s' % (pathlib.Path(__file__).parent.resolve(), 'notion.jpg')
+    notice = notify2.Notification(title, text, icon=path)
     notice.show()
+    notify2.uninit()
 
 
 def config_parser(session=None, get_data=False, inline=False, first_time=None):  # working with session.yml
@@ -97,6 +100,7 @@ def send_message():
 
 print(f"Hello from the ARA!\n")
 start_time = time.ctime()
+current_platform = sys.platform
 
 app = Client("my_account")
 
@@ -191,7 +195,8 @@ def interception(_, msg):
             messages.append(new_mess)
             print(">>>  %s  -  %s               (%s) %s" % (new_mess[0], new_mess[1], new_mess[2], new_mess[3]))
 
-        notification('%s, %s' % (new_mess[0], new_mess[2]))
+        if current_platform == 'linux':
+            notification('%s, %s' % (new_mess[0], new_mess[2]))
 
     except AttributeError:
         pass
