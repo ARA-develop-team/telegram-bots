@@ -2,4 +2,11 @@
 
 .idea
 config.ini
+my_account.session
+my_account.session-journal
+
+telegram_anton/config.ini
+telegram_anton/my_account.session
+telegram_anton/my_account.session-journal
+telegram_anton/session.yml
 
