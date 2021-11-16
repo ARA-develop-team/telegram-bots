@@ -2,35 +2,37 @@
 
 import telebot
 import config
-import time
+from datetime import datetime
 from client import Client
 
-from telebot import types
 
 bot = telebot.TeleBot(config.TOKEN)
-clients, menus = {}, {}
+clients = {}
+menus = config.build_menu()
 
 
-def stopwatch(chat_id, message_id):
-    passed_time = 0
-    while True:
-        bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f"Road. Time: {passed_time}")
+def get_time():
+    """Gets current time and converts to a list of ints
+    :return: list of integers, string of current time
+    """
+    current_time_str = datetime.now().strftime("%H:%M")
+    current_time_str_list = current_time_str.split(':')
+
+    current_time = []
+    for element in current_time_str_list:
+        current_time.append(int(element))
+
+    return current_time, current_time_str
 
 
 @bot.message_handler(commands=['start'])
 def welcome(message):
     """Processing of new user.
-    message: message, which user sent
+    :param message: message, which user sent
     """
 
     # keyboard
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    item1 = types.KeyboardButton("Start the road")
-    item2 = types.KeyboardButton("Show Total")
-    item3 = types.KeyboardButton("Travel pass")
-    item4 = types.KeyboardButton("Optional")
-    markup.add(item1, item2, item3, item4)
-    menus['mainmenu'] = markup
+    main_menu = menus['main_menu']
 
     # new user
     is_new_user = True
@@ -39,45 +41,84 @@ def welcome(message):
         if user == message.chat.id:    # user.chat_ip
             is_new_user = False
             bot.send_message(message.chat.id,
-                             "Bot is already working", reply_markup=markup)
+                             "Bot is already working", reply_markup=main_menu)
 
     if is_new_user:
-
         clients[message.chat.id] = Client(message.chat.id)
         print(type(clients[message.chat.id]))
         bot.send_message(message.chat.id,
                          "Welcome {0.first_name}! \nARA_Way ^v^".format(message.from_user),
-                         parse_mode='html', reply_markup=markup)
+                         parse_mode='html', reply_markup=main_menu)
 
 
 @bot.message_handler(content_types=['text'])
 def command_handler(message):
     """Handler for commands from user.
-    message: message, which user sent
+    :param message: message, which user sent
     """
 
     if message.chat.type == 'private' and clients:
+        user = clients[message.chat.id]
 
         if message.text == 'Start the road':
-            kb = types.InlineKeyboardMarkup()
-            item1 = types.InlineKeyboardButton(text="End the road", callback_data='end')
-            item2 = types.InlineKeyboardButton(text="Cancel", callback_data='road_cancel')
-            kb.add(item1, item2)
-            bot.send_message(message.chat.id, "Road. Time: __:__", reply_markup=kb)
+            if user.start_road_time is None:
+                road_menu = menus['add_road']
+
+                current_time, current_time_str = get_time()
+                bot.send_message(message.chat.id, f"Start of the Road: {current_time_str}", reply_markup=road_menu)
+                user.start_road_time = current_time
+
+            else:
+                bot.send_message(message.chat.id, "You haven’t finished your previous road")
 
         if message.text == 'Show Total':
-            print("working")
-            total = clients[message.chat.id].total
+            total = user.total
             bot.send_message(message.chat.id, 'Your Total: %s' % total)
 
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
-    if call.data == 'end':
-        price = 0.45   # ATTENTION!!!!
-        clients[call.message.chat.id].addition(price)   # add cost of the ride to total
-        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
-                              text=f"Your road successfully saved😊  \nPrice: {price}€")
+    """Creation multi-level inline menu."""
+
+    if clients:
+        if call.data == 'end':
+            user = clients[call.message.chat.id]
+            current_time, _ = get_time()
+            road_time = user.count_time(current_time)
+
+            prices = list(user.count_price(road_time))
+            user.last_road = [*prices, road_time]
+
+            price_menu = menus['prices']
+            price_menu.__dict__['keyboard'][0][0]['text'] = f"{prices[0]}€"
+            price_menu.__dict__['keyboard'][0][1]['text'] = f"{prices[1]}€"
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                  text=f"Spent time: {road_time} minutes\nChoose the price:", reply_markup=price_menu)
+
+        elif call.data == 'discount' or call.data == 'no_discount':
+            user = clients[call.message.chat.id]
+            last_road_data = user.last_road
+            price = last_road_data[1] if call.data == 'discount' else last_road_data[0]
+            user.add_to_total(price)
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                  text=f"Your road successfully saved😊  \nPrice: {price}€\n"
+                                       f"Time: {last_road_data[2]} minutes")
+
+        elif call.data == 'road_cancel':
+            confirm_menu = menus['sure']
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                  text=f"Are you sure you want to cancel the road?", reply_markup=confirm_menu)
+
+        elif call.data == 'yes':
+            clients[call.message.chat.id].start_road_time = None
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                  text=f"Road has been cancelled")
+
+        elif call.data == 'no':
+            road_menu = menus['add_road']
+            start_time = "{}:{}".format(*clients[call.message.chat.id].start_road_time)
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                  text=f"Start of the Road: {start_time}", reply_markup=road_menu)
 
 
 if __name__ == '__main__':
