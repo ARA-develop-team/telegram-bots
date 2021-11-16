@@ -5,7 +5,6 @@ import config
 from datetime import datetime
 from client import Client
 
-
 bot = telebot.TeleBot(config.TOKEN)
 clients = {}
 menus = config.build_menu()
@@ -38,7 +37,7 @@ def welcome(message):
     is_new_user = True
     for user in clients:
         print(user)
-        if user == message.chat.id:    # user.chat_ip
+        if user == message.chat.id:  # user.chat_ip
             is_new_user = False
             bot.send_message(message.chat.id,
                              "Bot is already working", reply_markup=main_menu)
@@ -49,6 +48,29 @@ def welcome(message):
         bot.send_message(message.chat.id,
                          "Welcome {0.first_name}! \nARA_Way ^v^".format(message.from_user),
                          parse_mode='html', reply_markup=main_menu)
+
+
+@bot.message_handler(commands=['price'])
+def set_custom_price(message):
+    section_message = (message.text.split(" "))
+    try:
+        section_price = float(section_message[1])
+
+    except ValueError:
+        bot.send_message(message.chat.id, 'Wrong syntax. Example: 14.50')
+
+    else:
+        user = clients[message.chat.id]
+        last_road_data = user.last_road
+        user.add_to_total(section_price)
+
+        if last_road_data:
+            bot.send_message(message.chat.id, f"Your road successfully saved😊  \nPrice: {section_price}€\n"
+                                              f"Time: {last_road_data[2]} minutes")
+            user.last_road = None
+
+        else:
+            bot.send_message(message.chat.id, f"You add {section_price}€ for your Total")
 
 
 @bot.message_handler(content_types=['text'])
@@ -73,7 +95,7 @@ def command_handler(message):
 
         if message.text == 'Show Total':
             total = user.total
-            bot.send_message(message.chat.id, 'Your Total: %s' % total)
+            bot.send_message(message.chat.id, 'Your Total: %s€' % total)
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -103,6 +125,7 @@ def callback_inline(call):
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text=f"Your road successfully saved😊  \nPrice: {price}€\n"
                                        f"Time: {last_road_data[2]} minutes")
+            user.last_road = None
 
         elif call.data == 'road_cancel':
             confirm_menu = menus['sure']
@@ -119,6 +142,10 @@ def callback_inline(call):
             start_time = "{}:{}".format(*clients[call.message.chat.id].start_road_time)
             bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                   text=f"Start of the Road: {start_time}", reply_markup=road_menu)
+
+        elif call.data == 'custom_price':
+            bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
+                                  text=f"Custom price, input example:\n/price 14.50")
 
 
 if __name__ == '__main__':

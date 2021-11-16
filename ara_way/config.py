@@ -11,8 +11,8 @@ def build_menu():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     item1 = types.KeyboardButton("Start the road")
     item2 = types.KeyboardButton("Show Total")
-    item3 = types.KeyboardButton("Travel pass")
-    item4 = types.KeyboardButton("Optional")
+    item3 = types.KeyboardButton("--Travel pass--")
+    item4 = types.KeyboardButton("--Optional--")
     markup.add(item1, item2, item3, item4)
 
     inline = types.InlineKeyboardMarkup()
@@ -30,6 +30,15 @@ def build_menu():
     item2 = types.InlineKeyboardButton(text="with discount", callback_data='discount')
     item3 = types.InlineKeyboardButton(text="Custom", callback_data='custom_price')
     inline3.add(item1, item2, item3)
+
+    # markup2 = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    # for button in range(1, 10):
+    #     item = types.InlineKeyboardButton(text=f"{button}", callback_data=f'${button}')
+    #     markup2.add(item)
+    # item1 = types.KeyboardButton(text="Ok", callback_data='$ok')
+    # item2 = types.KeyboardButton(text="0", callback_data='$0')
+    # item4 = types.KeyboardButton(text="Del")
+    # markup2.add(item1, item2, item3, item4)
 
     menus['main_menu'] = markup
     menus['add_road'] = inline
